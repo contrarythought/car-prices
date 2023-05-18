@@ -13,8 +13,11 @@ import (
 	"golang.org/x/net/html"
 )
 
+type carBrand = string
+type vehicleModel = string
+
 type CarBrands struct {
-	BrandModelMap map[string][]string `json:"names"`
+	BrandModelMap map[carBrand][]vehicleModel `json:"names"`
 }
 
 func NewCarBrands() *CarBrands {
@@ -174,7 +177,7 @@ func ScrapeBrands2() error {
 
 // TODO: thinking to scan each brand from the "complete brands worksheet", hold each brand as a key in a hashmap
 // and then fetch each brand-specific worksheet to add each model to a vector which will be the value in the
-// hashmap. 
+// hashmap.
 func ScrapeBrandsFromSpreadsheet() {
 
 }
