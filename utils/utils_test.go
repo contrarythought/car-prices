@@ -18,3 +18,10 @@ func TestScrapeBrand2(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+func TestScrapeSpread(t *testing.T) {
+	b := NewCarBrands()
+	if err := b.ScrapeBrandsFromSpreadsheet(); err != nil {
+		t.Error(err)
+	}
+}

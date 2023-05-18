@@ -1,15 +1,19 @@
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gocolly/colly/v2"
+	"github.com/xuri/excelize/v2"
 	"golang.org/x/net/html"
 )
 
@@ -18,6 +22,7 @@ type model = string
 
 type CarBrands struct {
 	BrandModelMap map[brand][]model `json:"names"`
+	mu            sync.RWMutex
 }
 
 func NewCarBrands() *CarBrands {
@@ -175,9 +180,97 @@ func ScrapeBrands2() error {
 	return nil
 }
 
-// TODO: thinking to scan each brand from the "complete brands worksheet", hold each brand as a key in a hashmap
-// and then fetch each brand-specific worksheet to add each model to a vector which will be the value in the
-// hashmap.
-func ScrapeBrandsFromSpreadsheet() {
+// TODO: test
+// writes each model to its corresponding brand
+func (brandMap *CarBrands) ScrapeBrandsFromSpreadsheet() error {
+	file, err := excelize.OpenFile(`Car Models List of Car Models.xlsx`)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
 
+	carListWksht := `Complete List of Car Brands`
+	var brands []brand
+	brand, err := file.GetCellValue(carListWksht, `A3`)
+	if err != nil {
+		return err
+	}
+
+	// read in each brand
+	cellCnt := 4
+	for brand != "" {
+		brands = append(brands, brand)
+		brand, err = file.GetCellValue(carListWksht, "A"+strconv.Itoa(cellCnt))
+		if err != nil {
+			return err
+		}
+		cellCnt++
+	}
+
+	var wg sync.WaitGroup
+
+	// write to brand-model map
+	for _, b := range brands {
+		wg.Add(1)
+		go func(brand string) {
+			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Println("err recovered:", r)
+				}
+			}()
+
+			cnt := 2
+			file, err := excelize.OpenFile(brand)
+			if err != nil {
+				panic(err)
+			}
+			defer file.Close()
+
+			model, err := file.GetCellValue(brand, "A"+strconv.Itoa(cnt))
+			if err != nil {
+				panic(err)
+			}
+			// find first cell that has value
+			cnt++
+			for model == "" {
+				brand, err = file.GetCellValue(brand, "A"+strconv.Itoa(cnt))
+				if err != nil {
+					panic(err)
+				}
+				cnt++
+			}
+			// write all values to map
+			for model != "" {
+				brandMap.mu.Lock()
+				brandMap.BrandModelMap[brand] = append(brandMap.BrandModelMap[brand], model)
+				brandMap.mu.Unlock()
+
+				model, err = file.GetCellValue(brand, "A"+strconv.Itoa(cnt))
+				if err != nil {
+					panic(err)
+				}
+				cnt++
+			}
+		}(b)
+	}
+	wg.Wait()
+
+	jsonFile, err := os.Create(`brand-model.json`)
+	if err != nil {
+		return err
+	}
+	defer jsonFile.Close()
+
+	jsonData, err := json.MarshalIndent(brandMap.BrandModelMap, "", "   ")
+	if err != nil {
+		return err
+	}
+
+	_, err = fmt.Fprintln(jsonFile, jsonData)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
