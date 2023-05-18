@@ -21,7 +21,7 @@ func TestScrapeBrand2(t *testing.T) {
 
 func TestScrapeSpread(t *testing.T) {
 	b := NewCarBrands()
-	if err := b.ScrapeBrandsFromSpreadsheet(); err != nil {
+	if err := ScrapeBrandsFromSpreadsheet(b); err != nil {
 		t.Error(err)
 	}
 }

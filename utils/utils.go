@@ -180,9 +180,12 @@ func ScrapeBrands2() error {
 	return nil
 }
 
-// TODO: test
+func (b *CarBrands) Add(brand, model string) {
+	b.BrandModelMap[brand] = append(b.BrandModelMap[brand], model)
+}
+
 // writes each model to its corresponding brand
-func (brandMap *CarBrands) ScrapeBrandsFromSpreadsheet() error {
+func ScrapeBrandsFromSpreadsheet(brandMap *CarBrands) error {
 	file, err := excelize.OpenFile(`Car Models List of Car Models.xlsx`)
 	if err != nil {
 		return err
@@ -222,12 +225,6 @@ func (brandMap *CarBrands) ScrapeBrandsFromSpreadsheet() error {
 			}()
 
 			cnt := 2
-			file, err := excelize.OpenFile(brand)
-			if err != nil {
-				panic(err)
-			}
-			defer file.Close()
-
 			model, err := file.GetCellValue(brand, "A"+strconv.Itoa(cnt))
 			if err != nil {
 				panic(err)
@@ -235,7 +232,7 @@ func (brandMap *CarBrands) ScrapeBrandsFromSpreadsheet() error {
 			// find first cell that has value
 			cnt++
 			for model == "" {
-				brand, err = file.GetCellValue(brand, "A"+strconv.Itoa(cnt))
+				model, err = file.GetCellValue(brand, "A"+strconv.Itoa(cnt))
 				if err != nil {
 					panic(err)
 				}
@@ -244,7 +241,7 @@ func (brandMap *CarBrands) ScrapeBrandsFromSpreadsheet() error {
 			// write all values to map
 			for model != "" {
 				brandMap.mu.Lock()
-				brandMap.BrandModelMap[brand] = append(brandMap.BrandModelMap[brand], model)
+				brandMap.Add(brand, model)
 				brandMap.mu.Unlock()
 
 				model, err = file.GetCellValue(brand, "A"+strconv.Itoa(cnt))
@@ -268,7 +265,7 @@ func (brandMap *CarBrands) ScrapeBrandsFromSpreadsheet() error {
 		return err
 	}
 
-	_, err = fmt.Fprintln(jsonFile, jsonData)
+	_, err = fmt.Fprintln(jsonFile, string(jsonData))
 	if err != nil {
 		return err
 	}
