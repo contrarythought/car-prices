@@ -13,16 +13,16 @@ import (
 	"golang.org/x/net/html"
 )
 
-type carBrand = string
-type vehicleModel = string
+type brand = string
+type model = string
 
 type CarBrands struct {
-	BrandModelMap map[carBrand][]vehicleModel `json:"names"`
+	BrandModelMap map[brand][]model `json:"names"`
 }
 
 func NewCarBrands() *CarBrands {
 	return &CarBrands{
-		BrandModelMap: make(map[string][]string),
+		BrandModelMap: make(map[brand][]model),
 	}
 }
 
