@@ -132,17 +132,20 @@ func ScrapeBrands2() error {
 	var scraper func(n *html.Node, add bool)
 
 	scraper = func(n *html.Node, add bool) {
-		if n.Type == html.ElementNode && n.Data == `a` {
-			for i := 0; i < len(n.Attr)-1; i++ {
-				if n.Attr[i].Key == `href` && strings.Contains(n.Attr[i].Val, `/wiki/`) {
-					if n.Attr[i+1].Key == `title` && n.FirstChild != nil {
-						if strings.Contains(strings.ToLower(n.Attr[i+1].Val), strings.ToLower(n.FirstChild.Data)) {
-							if strings.Contains(n.FirstChild.Data, "Timeline") {
-								fmt.Println("HERE:", n.FirstChild.Data)
-								add = false
-							}
-							if add {
-								brands = append(brands, n.FirstChild.Data)
+		if add {
+			if n.Type == html.ElementNode && n.Data == `a` {
+				for i := 0; i < len(n.Attr)-1; i++ {
+					if n.Attr[i].Key == `href` && strings.Contains(n.Attr[i].Val, `/wiki/`) {
+						if n.Attr[i+1].Key == `title` && n.FirstChild != nil {
+							if strings.Contains(strings.ToLower(n.Attr[i+1].Val), strings.ToLower(n.FirstChild.Data)) {
+								if strings.Contains(n.FirstChild.Data, "Timeline") {
+									fmt.Println("FALSE")
+									time.Sleep(3 * time.Second)
+									add = false
+								}
+								if add {
+									brands = append(brands, n.FirstChild.Data)
+								}
 							}
 						}
 					}
@@ -161,4 +164,11 @@ func ScrapeBrands2() error {
 		fmt.Println(brand)
 	}
 	return nil
+}
+
+// TODO: thinking to scan each brand from the "complete brands worksheet", hold each brand as a key in a hashmap
+// and then fetch each brand-specific worksheet to add each model to a vector which will be the value in the
+// hashmap. 
+func ScrapeBrandsFromSpreadsheet() {
+
 }
