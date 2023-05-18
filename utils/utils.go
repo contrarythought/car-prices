@@ -211,6 +211,7 @@ func (brandMap *CarBrands) ScrapeBrandsFromSpreadsheet() error {
 
 	// write to brand-model map
 	for _, b := range brands {
+		// have a worker for each worksheet
 		wg.Add(1)
 		go func(brand string) {
 			defer wg.Done()
