@@ -17,6 +17,12 @@ type CarBrands struct {
 	BrandModelMap map[string][]string `json:"names"`
 }
 
+func NewCarBrands() *CarBrands {
+	return &CarBrands{
+		BrandModelMap: make(map[string][]string),
+	}
+}
+
 const (
 	URL = `https://en.wikipedia.org/wiki/List_of_car_brands`
 )
