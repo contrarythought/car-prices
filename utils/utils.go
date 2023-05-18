@@ -14,7 +14,7 @@ import (
 )
 
 type CarBrands struct {
-	Names []string `json:"names"`
+	BrandModelMap map[string][]string `json:"names"`
 }
 
 const (
