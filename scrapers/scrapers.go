@@ -14,19 +14,9 @@ import (
 type brand = string
 type model = string
 
-type CarBrands struct {
-	BrandModelMap map[brand][]model `json:"names"`
-	mu            sync.RWMutex
-}
-
-func NewCarBrands() *CarBrands {
-	return &CarBrands{
-		BrandModelMap: make(map[brand][]model),
-	}
-}
-
 const (
-	URL = `https://en.wikipedia.org/wiki/List_of_car_brands`
+	WIKI_CAR_BRANDS_URL = `https://en.wikipedia.org/wiki/List_of_car_brands`
+	AUTOTRADER_URL      = `https://www.autotrader.com/`
 )
 
 func getUserAgent() string {
@@ -54,7 +44,20 @@ func haveBrandFile() (bool, error) {
 	return false, nil
 }
 
+type CarBrands struct {
+	BrandModelMap map[brand][]model `json:"names"`
+	mu            sync.RWMutex
+}
+
+func NewCarBrands() *CarBrands {
+	return &CarBrands{
+		BrandModelMap: make(map[brand][]model),
+	}
+}
+
 func (b *CarBrands) Add(brand, model string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	b.BrandModelMap[brand] = append(b.BrandModelMap[brand], model)
 }
 
@@ -122,10 +125,7 @@ func ScrapeBrandsFromSpreadsheet(brandMap *CarBrands) error {
 			}
 			// write all values to map
 			for model != "" {
-				brandMap.mu.Lock()
 				brandMap.Add(brand, model)
-				brandMap.mu.Unlock()
-
 				model, err = file.GetCellValue(brand, "A"+strconv.Itoa(cnt))
 				if err != nil {
 					panic(err)
@@ -153,4 +153,37 @@ func ScrapeBrandsFromSpreadsheet(brandMap *CarBrands) error {
 	}
 
 	return nil
+}
+
+type Dealer struct {
+	Name    string `json:"name"`
+	Address string `json:"address"`
+}
+
+func NewDealer(name, address string) *Dealer {
+	return &Dealer{
+		Name:    name,
+		Address: address,
+	}
+}
+
+// TODO
+type DealerTree struct {
+}
+
+type DealerMap struct {
+	ZipToDealers map[uint]DealerTree
+	mu           sync.RWMutex
+}
+
+func NewDealerMap() *DealerMap {
+	return &DealerMap{
+		ZipToDealers: make(map[uint]DealerTree),
+	}
+}
+
+// TODO
+func (dm *DealerMap) Add(key uint, val Dealer) {
+	dm.mu.Lock()
+	defer dm.mu.Unlock()
 }
