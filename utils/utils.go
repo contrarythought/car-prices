@@ -3,18 +3,12 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"math/rand"
-	"net/http"
 	"os"
 	"strconv"
-	"strings"
 	"sync"
-	"time"
 
-	"github.com/gocolly/colly/v2"
 	"github.com/xuri/excelize/v2"
-	"golang.org/x/net/html"
 )
 
 type brand = string
@@ -60,132 +54,20 @@ func haveBrandFile() (bool, error) {
 	return false, nil
 }
 
-func ScrapeBrands() error {
-	var brand string
-	haveFile, err := haveBrandFile()
-	if err != nil {
-		return err
-	}
-	if haveFile {
-		return nil
-	}
-
-	file, err := os.Create(`active_brands.json`)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	c := colly.NewCollector(
-		colly.UserAgent(getUserAgent()),
-	)
-
-	c.OnError(func(r *colly.Response, err error) {
-		fmt.Println("err:", err, "status:", r.StatusCode)
-	})
-
-	c.OnHTML(`h3 + ul`, func(e *colly.HTMLElement) {
-		brand = e.ChildText(`li > a[href^="/wiki/"]`)
-		fmt.Println(brand)
-	})
-
-	c.OnRequest(func(r *colly.Request) {
-		fmt.Println("requesting:", r.URL)
-	})
-
-	if err = c.Visit(URL); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func ScrapeBrands2() error {
-	haveFile, err := haveBrandFile()
-	if err != nil {
-		return err
-	}
-
-	if haveFile {
-		return nil
-	}
-
-	file, err := os.Create(`active_brands.json`)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	req, err := http.NewRequest(http.MethodGet, URL, nil)
-	if err != nil {
-		return err
-	}
-	req.Header.Add("user_agent", getUserAgent())
-
-	client := http.Client{
-		Timeout: 5 * time.Second,
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	doc, err := html.Parse(strings.NewReader(string(data)))
-	if err != nil {
-		return err
-	}
-
-	var brands []string
-	var scraper func(n *html.Node, add bool)
-
-	scraper = func(n *html.Node, add bool) {
-		if add {
-			if n.Type == html.ElementNode && n.Data == `a` {
-				for i := 0; i < len(n.Attr)-1; i++ {
-					if n.Attr[i].Key == `href` && strings.Contains(n.Attr[i].Val, `/wiki/`) {
-						if n.Attr[i+1].Key == `title` && n.FirstChild != nil {
-							if strings.Contains(strings.ToLower(n.Attr[i+1].Val), strings.ToLower(n.FirstChild.Data)) {
-								if strings.Contains(n.FirstChild.Data, "Timeline") {
-									fmt.Println("FALSE")
-									time.Sleep(3 * time.Second)
-									add = false
-								}
-								if add {
-									brands = append(brands, n.FirstChild.Data)
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			scraper(c, add)
-		}
-	}
-
-	scraper(doc, true)
-
-	for _, brand := range brands {
-		fmt.Println(brand)
-	}
-	return nil
-}
-
 func (b *CarBrands) Add(brand, model string) {
 	b.BrandModelMap[brand] = append(b.BrandModelMap[brand], model)
 }
 
 // writes each model to its corresponding brand
 func ScrapeBrandsFromSpreadsheet(brandMap *CarBrands) error {
+	haveFile, err := haveBrandFile()
+	if err != nil {
+		return err
+	}
+	if haveFile {
+		return fmt.Errorf("err: already have brand-model.json")
+	}
+
 	file, err := excelize.OpenFile(`Car Models List of Car Models.xlsx`)
 	if err != nil {
 		return err
