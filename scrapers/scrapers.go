@@ -158,27 +158,45 @@ func ScrapeBrandsFromSpreadsheet(brandMap *CarBrands) error {
 type Dealer struct {
 	Name    string `json:"name"`
 	Address string `json:"address"`
+	left    *Dealer
+	right   *Dealer
 }
 
 func NewDealer(name, address string) *Dealer {
 	return &Dealer{
 		Name:    name,
 		Address: address,
+		left:    nil,
+		right:   nil,
 	}
 }
 
 // TODO
 type DealerTree struct {
+	head *Dealer
+}
+
+func newDealerTree() *DealerTree {
+	return &DealerTree{head: nil}
+}
+
+func (dt *DealerTree) add(val Dealer) {
+	if dt == nil {
+		dt = newDealerTree()
+		dt.head = &val
+	} else if val.Name < dt.head.Name {
+		
+	}
 }
 
 type DealerMap struct {
-	ZipToDealers map[uint]DealerTree
+	ZipToDealers map[uint]*DealerTree
 	mu           sync.RWMutex
 }
 
 func NewDealerMap() *DealerMap {
 	return &DealerMap{
-		ZipToDealers: make(map[uint]DealerTree),
+		ZipToDealers: make(map[uint]*DealerTree),
 	}
 }
 
@@ -186,4 +204,5 @@ func NewDealerMap() *DealerMap {
 func (dm *DealerMap) Add(key uint, val Dealer) {
 	dm.mu.Lock()
 	defer dm.mu.Unlock()
+	dm.ZipToDealers[key].add(val)
 }
