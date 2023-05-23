@@ -1,6 +1,7 @@
 package scrapers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -8,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gocolly/colly/v2"
 	"github.com/xuri/excelize/v2"
@@ -277,14 +279,70 @@ func setZipCodeHeaders(r *colly.Request, zipCode string) {
 	r.Headers.Set(`upgrade-Insecure-Requests`, `1`)
 }
 
+const (
+	NUM_WORKERS = 10
+)
+
 // TODO
-func ScrapeDealers() error {
+func scrapeDealer(zipCode int, dealerMap *DealerMap) error {
+	return nil
+}
+
+// TODO
+func ScrapeDealers(zipCodes *ZipCodes) (*DealerMap, error) {
+	if zipCodes == nil {
+		return nil, fmt.Errorf("err: zipCodes not allocated")
+	}
+
+	dealerMap := NewDealerMap()
+	zipCodeChan := make(chan int, NUM_WORKERS)
+	var wg sync.WaitGroup
+	ctx, cancel := context.WithCancel(context.Background())
+
+	for i := 0; i < NUM_WORKERS; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Println(r)
+				}
+			}()
+
+			select {
+			case code := <-zipCodeChan:
+				if err := scrapeDealer(code, dealerMap); err != nil {
+					panic(err)
+				}
+			case <-ctx.Done():
+				if len(zipCodeChan) == 0 {
+					return
+				}
+			}
+		}()
+	}
+
 	// 1. loop through each state and state zip code
+	for _, codes := range zipCodes.StateToZip {
+		for i, code := range codes {
+			if (i+1)%10 == 0 {
+				time.Sleep(time.Duration(rand.Intn(4) + 3))
+			}
+
+			zipCodeChan <- code
+
+		}
+	}
+
+	close(zipCodeChan)
+	cancel()
+	wg.Wait()
+
 	// 2. send request for each zip code
 	// 3. scrape the page for link to vehicle
 	// 4. scrape vehicle page and extract dealer info
 	// 5. place dealer info into DealerMap
 	// 6. generate json file
 	// 7. put json file info into db
-	return nil
+	return dealerMap, nil
 }
