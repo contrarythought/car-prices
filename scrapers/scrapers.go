@@ -213,7 +213,6 @@ const (
 	ZIPCODE_URL = `https://www.zipcode.com.ng/2022/06/list-of-5-digit-zip-codes-united-states.html`
 )
 
-// TODO: test
 func ScrapeZipCodes() (*ZipCodes, error) {
 	zipCodes := NewZipCodes()
 
@@ -230,24 +229,27 @@ func ScrapeZipCodes() (*ZipCodes, error) {
 		// get the zip code range
 		zipRangeStr := h.ChildText(`#content > div:nth-child(5) > table > tbody > tr > td:nth-child(3)`)
 		zipRange := strings.Split(zipRangeStr, " to ")
-		startZip, err := strconv.Atoi(zipRange[0])
-		if err != nil {
-			fmt.Println(err)
+
+		if len(state) > 1 && len(zipRange) > 1 {
+			startZip, err := strconv.Atoi(zipRange[0])
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			endZip, err := strconv.Atoi(zipRange[1])
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			zipRangeArr := make([]int, endZip-startZip+1)
+
+			for i, j := startZip, 0; i <= endZip && j < endZip-startZip+1; i, j = i+1, j+1 {
+				zipRangeArr[j] = i
+			}
+
+			// add state/zip into map
+			zipCodes.stateToZip[state] = zipRangeArr
 		}
-
-		endZip, err := strconv.Atoi(zipRange[1])
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		zipRangeArr := make([]int, endZip-startZip+1)
-
-		for i := startZip; i <= endZip; i++ {
-			zipRangeArr = append(zipRangeArr, i)
-		}
-
-		// add state/zip into map
-		zipCodes.stateToZip[state] = zipRangeArr
 	})
 
 	if err := c.Visit(ZIPCODE_URL); err != nil {

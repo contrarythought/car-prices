@@ -37,12 +37,12 @@ func createDealerNode(val *Dealer) *Dealer {
 func (dt *DealerTree) InsertNode(root, val *Dealer) {
 	if root == nil {
 		dt.mu.Lock()
-		dt.root = createDealerNode(val)
+		dt.Root = createDealerNode(val)
 		dt.mu.Unlock()
 	} else if val.Name < root.Name {
-		dt.insertNode(dt.root.left, val)
+		dt.insertNode(dt.Root.left, val)
 	} else {
-		dt.insertNode(dt.root.right, val)
+		dt.insertNode(dt.Root.right, val)
 	}
 }
 

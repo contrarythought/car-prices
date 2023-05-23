@@ -1,6 +1,8 @@
 package scrapers
 
 import (
+	"fmt"
+	"os"
 	"testing"
 )
 
@@ -12,7 +14,17 @@ func TestScrapeSpread(t *testing.T) {
 }
 
 func TestScrapeZip(t *testing.T) {
-	if err := ScrapeZipCodes(); err != nil {
+	file, err := os.Create("zipcodes.txt")
+	if err != nil {
 		t.Error(err)
 	}
+	defer file.Close()
+
+	zipcodes, err := ScrapeZipCodes()
+	if err != nil {
+		t.Error(err)
+	}
+
+	fmt.Fprintln(file, zipcodes)
+
 }
