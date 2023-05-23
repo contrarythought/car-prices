@@ -6,8 +6,10 @@ import (
 	"math/rand"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 
+	"github.com/gocolly/colly/v2"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -158,51 +160,105 @@ func ScrapeBrandsFromSpreadsheet(brandMap *CarBrands) error {
 type Dealer struct {
 	Name    string `json:"name"`
 	Address string `json:"address"`
-	left    *Dealer
-	right   *Dealer
+	Phone   string `json:"phone"`
 }
 
-func NewDealer(name, address string) *Dealer {
-	return &Dealer{
-		Name:    name,
-		Address: address,
-		left:    nil,
-		right:   nil,
-	}
+type DealerSet struct {
+	set map[string]*Dealer
 }
 
-// TODO
-type DealerTree struct {
-	head *Dealer
-}
-
-func newDealerTree() *DealerTree {
-	return &DealerTree{head: nil}
-}
-
-func (dt *DealerTree) add(val Dealer) {
-	if dt == nil {
-		dt = newDealerTree()
-		dt.head = &val
-	} else if val.Name < dt.head.Name {
-		
-	}
+func NewDealerSet() *DealerSet {
+	return &DealerSet{set: make(map[string]*Dealer)}
 }
 
 type DealerMap struct {
-	ZipToDealers map[uint]*DealerTree
+	ZipToDealers map[uint]*DealerSet
+	dealerSet    DealerSet
 	mu           sync.RWMutex
 }
 
 func NewDealerMap() *DealerMap {
 	return &DealerMap{
-		ZipToDealers: make(map[uint]*DealerTree),
+		ZipToDealers: make(map[uint]*DealerSet),
+		dealerSet:    *NewDealerSet(),
 	}
 }
 
-// TODO
 func (dm *DealerMap) Add(key uint, val Dealer) {
 	dm.mu.Lock()
 	defer dm.mu.Unlock()
-	dm.ZipToDealers[key].add(val)
+	dm.ZipToDealers[key].set[val.Name] = &val
+	dm.dealerSet.set[val.Name] = &val
+}
+
+func (dm *DealerMap) Get(dealerName string) (*Dealer, error) {
+	dealer, have := dm.dealerSet.set[dealerName]
+	if !have {
+		return nil, fmt.Errorf("dealer not found")
+	}
+	return dealer, nil
+}
+
+type ZipCodes struct {
+	stateToZip map[string][]int
+}
+
+func NewZipCodes() *ZipCodes {
+	return &ZipCodes{
+		stateToZip: make(map[string][]int),
+	}
+}
+
+const (
+	ZIPCODE_URL = `https://www.zipcode.com.ng/2022/06/list-of-5-digit-zip-codes-united-states.html`
+)
+
+// TODO: test
+func ScrapeZipCodes() (*ZipCodes, error) {
+	zipCodes := NewZipCodes()
+
+	c := colly.NewCollector(colly.UserAgent(getUserAgent()))
+
+	c.OnError(func(r *colly.Response, err error) {
+		fmt.Println(r.StatusCode, ":", err)
+	})
+
+	c.OnHTML(`tr`, func(h *colly.HTMLElement) {
+		// get the state
+		state := h.ChildText(`a[href^="/2022/06"]`)
+
+		// get the zip code range
+		zipRangeStr := h.ChildText(`#content > div:nth-child(5) > table > tbody > tr > td:nth-child(3)`)
+		zipRange := strings.Split(zipRangeStr, " to ")
+		startZip, err := strconv.Atoi(zipRange[0])
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		endZip, err := strconv.Atoi(zipRange[1])
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		zipRangeArr := make([]int, endZip-startZip+1)
+
+		for i := startZip; i <= endZip; i++ {
+			zipRangeArr = append(zipRangeArr, i)
+		}
+
+		// add state/zip into map
+		zipCodes.stateToZip[state] = zipRangeArr
+	})
+
+	if err := c.Visit(ZIPCODE_URL); err != nil {
+		return nil, err
+	}
+
+	return zipCodes, nil
+}
+
+// TODO
+func ScrapeDealers() error {
+
+	return nil
 }

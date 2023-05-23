@@ -10,3 +10,9 @@ func TestScrapeSpread(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+func TestScrapeZip(t *testing.T) {
+	if err := ScrapeZipCodes(); err != nil {
+		t.Error(err)
+	}
+}
