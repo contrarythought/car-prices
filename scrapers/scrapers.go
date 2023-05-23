@@ -200,12 +200,12 @@ func (dm *DealerMap) Get(dealerName string) (*Dealer, error) {
 }
 
 type ZipCodes struct {
-	stateToZip map[string][]int
+	StateToZip map[string][]int
 }
 
 func NewZipCodes() *ZipCodes {
 	return &ZipCodes{
-		stateToZip: make(map[string][]int),
+		StateToZip: make(map[string][]int),
 	}
 }
 
@@ -248,7 +248,7 @@ func ScrapeZipCodes() (*ZipCodes, error) {
 			}
 
 			// add state/zip into map
-			zipCodes.stateToZip[state] = zipRangeArr
+			zipCodes.StateToZip[state] = zipRangeArr
 		}
 	})
 
@@ -259,8 +259,32 @@ func ScrapeZipCodes() (*ZipCodes, error) {
 	return zipCodes, nil
 }
 
+func setZipCodeHeaders(r *colly.Request, zipCode string) {
+	r.Headers.Set(`authority`, `www.autotrader.com`)
+	r.Headers.Set(`method`, r.Method)
+	r.Headers.Set(`path`, `/cars-for-sale/all-cars?zip=`+zipCode)
+	r.Headers.Set(`scheme`, `https`)
+	r.Headers.Set(`accept`, `text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7`)
+	r.Headers.Set(`accept-Encoding`, `gzip, deflate, br`)
+	r.Headers.Set(`accept-Language`, `en,en-US;q=0.9,zh-TW;q=0.8,zh;q=0.7`)
+	r.Headers.Set(`sec-Ch-Ua`, `"Google Chrome";v="113", "Chromium";v="113", "Not-A.Brand";v="24"`)
+	r.Headers.Set(`sec-Ch-Ua-Mobile`, `?0`)
+	r.Headers.Set(`sec-Ch-Ua-Platform`, `"Windows"`)
+	r.Headers.Set(`sec-Fetch-Dest`, `document`)
+	r.Headers.Set(`sec-Fetch-Mode`, `navigate`)
+	r.Headers.Set(`sec-Fetch-Site`, `same-origin`)
+	r.Headers.Set(`sec-Fetch-User`, `?1`)
+	r.Headers.Set(`upgrade-Insecure-Requests`, `1`)
+}
+
 // TODO
 func ScrapeDealers() error {
-
+	// 1. loop through each state and state zip code
+	// 2. send request for each zip code
+	// 3. scrape the page for link to vehicle
+	// 4. scrape vehicle page and extract dealer info
+	// 5. place dealer info into DealerMap
+	// 6. generate json file
+	// 7. put json file info into db
 	return nil
 }
