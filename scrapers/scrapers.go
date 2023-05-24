@@ -174,31 +174,39 @@ func NewDealerSet() *DealerSet {
 }
 
 type DealerMap struct {
-	ZipToDealers map[uint]*DealerSet
+	ZipToDealers map[int]*DealerSet
 	dealerSet    DealerSet
 	mu           sync.RWMutex
 }
 
 func NewDealerMap() *DealerMap {
 	return &DealerMap{
-		ZipToDealers: make(map[uint]*DealerSet),
+		ZipToDealers: make(map[int]*DealerSet),
 		dealerSet:    *NewDealerSet(),
 	}
 }
 
-func (dm *DealerMap) Add(key uint, val Dealer) {
+func (dm *DealerMap) Add(zip int, dealer Dealer) {
 	dm.mu.Lock()
 	defer dm.mu.Unlock()
-	dm.ZipToDealers[key].set[val.Name] = &val
-	dm.dealerSet.set[val.Name] = &val
+	dm.ZipToDealers[zip].set[dealer.Name] = &dealer
+	dm.dealerSet.set[dealer.Name] = &dealer
 }
 
-func (dm *DealerMap) Get(dealerName string) (*Dealer, error) {
+func (dm *DealerMap) GetDealerByName(dealerName string) (*Dealer, error) {
 	dealer, have := dm.dealerSet.set[dealerName]
 	if !have {
 		return nil, fmt.Errorf("dealer not found")
 	}
 	return dealer, nil
+}
+
+func (dm *DealerMap) GetDealersbyZip(zip int) (*DealerSet, error) {
+	set, have := dm.ZipToDealers[zip]
+	if have && set != nil {
+		return set, nil
+	}
+	return nil, fmt.Errorf("err: failed to find dealer set")
 }
 
 type ZipCodes struct {
@@ -261,10 +269,10 @@ func ScrapeZipCodes() (*ZipCodes, error) {
 	return zipCodes, nil
 }
 
-func setZipCodeHeaders(r *colly.Request, zipCode string) {
+func setZipCodeHeaders(r *colly.Request, zipCode int) {
 	r.Headers.Set(`authority`, `www.autotrader.com`)
 	r.Headers.Set(`method`, r.Method)
-	r.Headers.Set(`path`, `/cars-for-sale/all-cars?zip=`+zipCode)
+	r.Headers.Set(`path`, `/cars-for-sale/all-cars?zip=`+strconv.Itoa(zipCode))
 	r.Headers.Set(`scheme`, `https`)
 	r.Headers.Set(`accept`, `text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7`)
 	r.Headers.Set(`accept-Encoding`, `gzip, deflate, br`)
@@ -280,7 +288,8 @@ func setZipCodeHeaders(r *colly.Request, zipCode string) {
 }
 
 const (
-	NUM_WORKERS = 10
+	NUM_WORKERS        = 10
+	AUTOTRADER_ZIP_URL = `https://www.autotrader.com/cars-for-sale/all-cars?zip=`
 )
 
 // TODO
@@ -290,6 +299,12 @@ func scrapeDealer(zipCode int, dealerMap *DealerMap) error {
 	c.OnError(func(r *colly.Response, err error) {
 		fmt.Println(r.StatusCode, ":", err)
 	})
+
+	c.OnRequest(func(r *colly.Request) {
+		setZipCodeHeaders(r, zipCode)
+	})
+
+	c.Visit(AUTOTRADER_ZIP_URL + strconv.Itoa(zipCode))
 
 	return nil
 }
