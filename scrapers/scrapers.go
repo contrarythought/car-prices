@@ -285,6 +285,12 @@ const (
 
 // TODO
 func scrapeDealer(zipCode int, dealerMap *DealerMap) error {
+	c := colly.NewCollector(colly.UserAgent(getUserAgent()))
+
+	c.OnError(func(r *colly.Response, err error) {
+		fmt.Println(r.StatusCode, ":", err)
+	})
+
 	return nil
 }
 
