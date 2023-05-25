@@ -165,6 +165,28 @@ type Dealer struct {
 	Phone   string `json:"phone"`
 }
 
+type Vehicle struct {
+	Name  string
+	Price float64
+}
+
+func NewVehicle(name string, price float64) *Vehicle {
+	return &Vehicle{
+		Name:  name,
+		Price: price,
+	}
+}
+
+type VehicleMap struct {
+	set map[int][]Vehicle
+}
+
+func NewVehicleMap() *VehicleMap {
+	return &VehicleMap{
+		set: make(map[int][]Vehicle),
+	}
+}
+
 type DealerSet struct {
 	set map[string]*Dealer
 }
@@ -175,14 +197,16 @@ func NewDealerSet() *DealerSet {
 
 type DealerMap struct {
 	ZipToDealers map[int]*DealerSet
-	dealerSet    DealerSet
+	dealerSet    *DealerSet
+	VehicleMap   *VehicleMap
 	mu           sync.RWMutex
 }
 
 func NewDealerMap() *DealerMap {
 	return &DealerMap{
 		ZipToDealers: make(map[int]*DealerSet),
-		dealerSet:    *NewDealerSet(),
+		dealerSet:    NewDealerSet(),
+		VehicleMap:   NewVehicleMap(),
 	}
 }
 
@@ -289,22 +313,18 @@ func setZipCodeHeaders(r *colly.Request, zipCode int) {
 
 const (
 	NUM_WORKERS        = 10
-	AUTOTRADER_ZIP_URL = `https://www.autotrader.com/cars-for-sale/all-cars?zip=`
+	AUTOTRADER_ZIP_URL = `https://www.autotrader.com/cars-for-sale/all-cars?zip={{.Zip}}&firstRecord={{.FirstRecord}}`
 )
 
-// TODO
-func scrapeDealer(zipCode int, dealerMap *DealerMap) error {
-	c := colly.NewCollector(colly.UserAgent(getUserAgent()))
+// TODO: scrape all dealers within range of a zip code
+func scrapeDealers(zipCode int, dealerMap *DealerMap) error {
+	// 1. find num pages to scrape
+	// 2. loop through all pages with start firstRecord = 0, and increment that all the way to max page - increment (25, 100, etc)
+	// 3. visit each vehicledetail link
+	// 4. if dealer is unique, add name and address to dealermap
+	// 5. add car name and price to vehiclemap
 
-	c.OnError(func(r *colly.Response, err error) {
-		fmt.Println(r.StatusCode, ":", err)
-	})
 
-	c.OnRequest(func(r *colly.Request) {
-		setZipCodeHeaders(r, zipCode)
-	})
-
-	c.Visit(AUTOTRADER_ZIP_URL + strconv.Itoa(zipCode))
 
 	return nil
 }
@@ -332,7 +352,7 @@ func ScrapeDealers(zipCodes *ZipCodes) (*DealerMap, error) {
 
 			select {
 			case code := <-zipCodeChan:
-				if err := scrapeDealer(code, dealerMap); err != nil {
+				if err := scrapeDealers(code, dealerMap); err != nil {
 					panic(err)
 				}
 			case <-ctx.Done():

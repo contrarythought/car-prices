@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"text/template"
 
 	"github.com/gocolly/colly/v2"
 )
@@ -48,6 +49,7 @@ func TestGetAutoTrader(t *testing.T) {
 	})
 
 	c.OnRequest(func(r *colly.Request) {
+		fmt.Println("request url:", r.URL)
 		setZipCodeHeaders(r, zip)
 	})
 
@@ -62,7 +64,32 @@ func TestGetAutoTrader(t *testing.T) {
 		}
 	})
 
-	if err := c.Visit(AUTOTRADER_ZIP_URL + strconv.Itoa(zip)); err != nil {
+	c.OnHTML(`#mountNode > div:nth-child(2) > div.colored-background.inset.bg-gray-lightest.padding-top-4 > div > div.row.margin-horizontal-0.padding-horizontal-0 > div.row.display-flex > div.col-xs-12.col-md-9 > div:nth-child(6) > div.results-text-container.text-size-300.margin-right-4`, func(h *colly.HTMLElement) {
+		resultText := strings.Split(h.Text, " ")
+		numResult := resultText[2]
+		fmt.Println("num results:", numResult)
+	})
+
+	testTemplate := template.New("testTemplate")
+	testTemplate, err = testTemplate.Parse(AUTOTRADER_ZIP_URL)
+	if err != nil {
+		t.Error(err)
+	}
+
+	firstRecord := `975`
+
+	var url strings.Builder
+	if err = testTemplate.Execute(&url, struct {
+		Zip         string
+		FirstRecord string
+	}{
+		Zip:         strconv.Itoa(zip),
+		FirstRecord: firstRecord,
+	}); err != nil {
+		t.Error(err)
+	}
+
+	if err := c.Visit(url.String()); err != nil {
 		t.Error(err)
 	}
 
@@ -71,7 +98,6 @@ func TestGetAutoTrader(t *testing.T) {
 	}
 
 	for _, link := range links {
-		fmt.Println("writing:", link)
 		fmt.Fprintln(file, link)
 	}
 }
